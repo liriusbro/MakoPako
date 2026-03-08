@@ -12,22 +12,31 @@ import (
 )
 
 type articulService struct {
-	articuls ports.ArticulRepository
-	users    ports.UserRepository
+	articuls          ports.ArticulRepository
+	users             ports.UserRepository
+	achievementChecker *achievementChecker
 }
 
-func NewArticulService(a ports.ArticulRepository, u ports.UserRepository) ports.ArticulService {
-	return &articulService{articuls: a, users: u}
+func NewArticulService(a ports.ArticulRepository, u ports.UserRepository, ach *achievementChecker) ports.ArticulService {
+	return &articulService{articuls: a, users: u, achievementChecker: ach}
 }
 
-func (s *articulService) Create(ctx context.Context, userID, number string) (*domain.Articul, error) {
+func (s *articulService) Create(ctx context.Context, userID, number string) (*domain.Articul, *ports.AchievementResult, error) {
+	existing, _ := s.articuls.GetByUserIDAndNumber(ctx, userID, number)
+	if existing != nil {
+		return nil, nil, errors.New("duplicate: articul number already exists")
+	}
 	a := &domain.Articul{
 		ID:        uuid.New().String(),
 		UserID:    userID,
 		Number:    number,
 		CreatedAt: time.Now(),
 	}
-	return a, s.articuls.Create(ctx, a)
+	if err := s.articuls.Create(ctx, a); err != nil {
+		return nil, nil, err
+	}
+	achResult, _ := s.achievementChecker.CheckAfterCreate(ctx, userID)
+	return a, achResult, nil
 }
 
 func (s *articulService) List(ctx context.Context, userID string) ([]*domain.Articul, error) {
@@ -65,4 +74,26 @@ func (s *articulService) GetWithChanges(ctx context.Context, articulID, requesti
 		a.Changes[i] = *c
 	}
 	return a, nil
+}
+
+func (s *articulService) Delete(ctx context.Context, articulID, userID string) error {
+	a, err := s.articuls.GetByID(ctx, articulID)
+	if err != nil {
+		return errors.New("articul not found")
+	}
+	if a.UserID != userID {
+		return errors.New("forbidden")
+	}
+	return s.articuls.DeleteByID(ctx, articulID)
+}
+
+func (s *articulService) UpdateComment(ctx context.Context, articulID, userID, comment string) error {
+	a, err := s.articuls.GetByID(ctx, articulID)
+	if err != nil {
+		return errors.New("articul not found")
+	}
+	if a.UserID != userID {
+		return errors.New("forbidden")
+	}
+	return s.articuls.UpdateComment(ctx, articulID, userID, comment)
 }

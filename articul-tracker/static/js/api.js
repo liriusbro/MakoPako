@@ -27,9 +27,17 @@ export const api = {
   createArticul:     (number)    => request('POST', '/api/articuls', { number }),
   getArticul:        (id)        => request('GET',  `/api/articuls/${id}`),
   addChange:         (id, desc)  => request('POST', `/api/articuls/${id}/changes`, { description: desc }),
+  updateComment:     (id, comment) => request('PUT', `/api/articuls/${id}/comment`, { comment }),
+  deleteArticul:     (id) => request('DELETE', `/api/articuls/${id}`),
 
   getLeaderboard:    ()          => request('GET',  '/api/leaderboard'),
+  getSeasonalLeaders: ()        => request('GET',  '/api/leaderboard/seasonal'),
   getUser:           (id)        => request('GET',  `/api/users/${id}`),
   getUserStats:      (id)        => request('GET',  `/api/users/${id}/stats`),
   getUserArticuls:   (id)        => request('GET',  `/api/users/${id}/articuls`),
+  getUserHistory:    (id)        => request('GET',  `/api/users/${id}/history`),
+  getUserHistoryMonth: (id, y, m) => request('GET',  `/api/users/${id}/history/${y}/${m}`),
+
+  getAchievements:   ()         => request('GET',  '/api/me/achievements'),
+  getDailyProgress:  ()         => request('GET',  '/api/me/daily-progress'),
 };

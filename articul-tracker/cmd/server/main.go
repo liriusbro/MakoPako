@@ -19,15 +19,21 @@ func main() {
 	userRepo := storage.NewUserRepo(db)
 	articulRepo := storage.NewArticulRepo(db)
 	sessionRepo := storage.NewSessionRepo(db)
+	achievementRepo := storage.NewAchievementRepo(db)
+	historyRepo := storage.NewMonthlyHistoryRepo(db)
 
 	// Application services (use cases)
 	authSvc := application.NewAuthService(userRepo, sessionRepo)
 	userSvc := application.NewUserService(userRepo, articulRepo)
-	articulSvc := application.NewArticulService(articulRepo, userRepo)
+	achievementChecker := application.NewAchievementChecker(userRepo, articulRepo, achievementRepo)
+	articulSvc := application.NewArticulService(articulRepo, userRepo, achievementChecker)
 	leaderboardSvc := application.NewLeaderboardService(userRepo, articulRepo)
 
 	// HTTP adapter (input adapter)
-	server := httpadapter.NewServer(authSvc, userSvc, articulSvc, leaderboardSvc)
+	server := httpadapter.NewServer(authSvc, userSvc, articulSvc, leaderboardSvc, achievementRepo, achievementChecker, historyRepo)
+
+	// Start monthly reset scheduler
+	application.StartMonthlyResetScheduler(userRepo, articulRepo, historyRepo)
 
 	log.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", server))

@@ -11,6 +11,15 @@ func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, entries)
 }
 
+func (s *Server) handleSeasonalLeaders(w http.ResponseWriter, r *http.Request) {
+	leaders, err := s.leaderboardSvc.GetSeasonalLeaders(r.Context())
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, leaders)
+}
+
 func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	targetID := r.PathValue("id")
 	user, err := s.userService.GetProfile(r.Context(), targetID)

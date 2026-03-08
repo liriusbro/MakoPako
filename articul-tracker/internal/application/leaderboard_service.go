@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"sort"
+	"time"
 
 	"articul-tracker/internal/ports"
 )
@@ -33,4 +34,34 @@ func (s *leaderboardService) GetLeaderboard(ctx context.Context) ([]ports.Leader
 		entries[i].Rank = i + 1
 	}
 	return entries, nil
+}
+
+func (s *leaderboardService) GetSeasonalLeaders(ctx context.Context) (*ports.SeasonalLeaders, error) {
+	now := time.Now()
+	periods := map[string]string{
+		"day":   now.Format("2006-01-02") + " 00:00:00",
+		"week":  now.AddDate(0, 0, -7).Format("2006-01-02 15:04:05"),
+		"month": now.Format("2006-01") + "-01 00:00:00",
+	}
+	result := &ports.SeasonalLeaders{}
+	for key, since := range periods {
+		uid, cnt, err := s.articuls.GetTopUserByPeriod(ctx, since)
+		if err != nil || uid == "" {
+			continue
+		}
+		user, err := s.users.GetByID(ctx, uid)
+		if err != nil {
+			continue
+		}
+		entry := &ports.SeasonalEntry{User: user, Count: cnt}
+		switch key {
+		case "day":
+			result.DayLeader = entry
+		case "week":
+			result.WeekLeader = entry
+		case "month":
+			result.MonthLeader = entry
+		}
+	}
+	return result, nil
 }

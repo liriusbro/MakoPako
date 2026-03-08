@@ -15,30 +15,30 @@ func NewUserRepo(db *SQLiteDB) ports.UserRepository {
 
 func (r *userRepo) Create(ctx context.Context, u *domain.User) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO users (id, username, password_hash, avatar_url, created_at) VALUES (?,?,?,?,?)`,
-		u.ID, u.Username, u.PasswordHash, u.AvatarURL, u.CreatedAt)
+		`INSERT INTO users (id, username, password_hash, avatar_url, created_at, personal_best_day, personal_best_date, all_time_count, current_streak, last_active_date) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		u.ID, u.Username, u.PasswordHash, u.AvatarURL, u.CreatedAt, u.PersonalBestDay, u.PersonalBestDate, u.AllTimeCount, u.CurrentStreak, u.LastActiveDate)
 	return err
 }
 
 func (r *userRepo) GetByID(ctx context.Context, id string) (*domain.User, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id,username,password_hash,avatar_url,created_at FROM users WHERE id=?`, id)
+	row := r.db.QueryRowContext(ctx, `SELECT id,username,password_hash,avatar_url,created_at,personal_best_day,personal_best_date,all_time_count,current_streak,last_active_date FROM users WHERE id=?`, id)
 	return scanUser(row)
 }
 
 func (r *userRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id,username,password_hash,avatar_url,created_at FROM users WHERE username=?`, username)
+	row := r.db.QueryRowContext(ctx, `SELECT id,username,password_hash,avatar_url,created_at,personal_best_day,personal_best_date,all_time_count,current_streak,last_active_date FROM users WHERE username=?`, username)
 	return scanUser(row)
 }
 
 func (r *userRepo) Update(ctx context.Context, u *domain.User) error {
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE users SET username=?, password_hash=?, avatar_url=? WHERE id=?`,
-		u.Username, u.PasswordHash, u.AvatarURL, u.ID)
+		`UPDATE users SET username=?, password_hash=?, avatar_url=?, personal_best_day=?, personal_best_date=?, all_time_count=?, current_streak=?, last_active_date=? WHERE id=?`,
+		u.Username, u.PasswordHash, u.AvatarURL, u.PersonalBestDay, u.PersonalBestDate, u.AllTimeCount, u.CurrentStreak, u.LastActiveDate, u.ID)
 	return err
 }
 
 func (r *userRepo) ListAll(ctx context.Context) ([]*domain.User, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id,username,password_hash,avatar_url,created_at FROM users ORDER BY created_at`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id,username,password_hash,avatar_url,created_at,personal_best_day,personal_best_date,all_time_count,current_streak,last_active_date FROM users ORDER BY created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (r *userRepo) ListAll(ctx context.Context) ([]*domain.User, error) {
 	var users []*domain.User
 	for rows.Next() {
 		u := &domain.User{}
-		rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AvatarURL, &u.CreatedAt)
+		rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AvatarURL, &u.CreatedAt, &u.PersonalBestDay, &u.PersonalBestDate, &u.AllTimeCount, &u.CurrentStreak, &u.LastActiveDate)
 		users = append(users, u)
 	}
 	return users, nil
@@ -54,7 +54,7 @@ func (r *userRepo) ListAll(ctx context.Context) ([]*domain.User, error) {
 
 func scanUser(row *sql.Row) (*domain.User, error) {
 	u := &domain.User{}
-	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AvatarURL, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.AvatarURL, &u.CreatedAt, &u.PersonalBestDay, &u.PersonalBestDate, &u.AllTimeCount, &u.CurrentStreak, &u.LastActiveDate)
 	if err != nil {
 		return nil, err
 	}

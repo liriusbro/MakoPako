@@ -1,5 +1,6 @@
 import { openProfilePage }      from '../pages/profile.js';
 import { openLeaderboardPage }  from '../pages/leaderboard.js';
+import { openAchievementsPage } from '../pages/achievements.js';
 import { api }                  from '../api.js';
 import { renderAuth }           from '../pages/auth.js';
 import { showToast }            from './modal.js';
@@ -14,9 +15,15 @@ export function renderSidebar(container, user, onRefresh) {
   sidebar.className = 'sidebar';
   sidebar.innerHTML = `
     <button class="sidebar-btn" id="sb-profile" title="Профиль">
-      <div style="width:36px;height:36px;border-radius:50%;background:rgba(105,171,187,0.2);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:var(--primary);overflow:hidden">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(105,171,187,0.2);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:.8rem;color:var(--primary);overflow:hidden">
         ${user.avatar_url ? `<img src="${user.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>` : initials}
       </div>
+    </button>
+    <button class="sidebar-btn" id="sb-achievements" title="Достижения">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="6"/>
+        <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+      </svg>
     </button>
     <button class="sidebar-btn" id="sb-leaderboard" title="Рейтинг">
       ${iconTrophy()}
@@ -31,6 +38,10 @@ export function renderSidebar(container, user, onRefresh) {
 
   sidebar.querySelector('#sb-profile').addEventListener('click', () => {
     openProfilePage(user, user, true, onRefresh);
+  });
+
+  sidebar.querySelector('#sb-achievements').addEventListener('click', () => {
+    openAchievementsPage();
   });
 
   sidebar.querySelector('#sb-leaderboard').addEventListener('click', () => {

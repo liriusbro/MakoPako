@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func (s *Server) handleListArticuls(w http.ResponseWriter, r *http.Request) {
@@ -24,13 +25,17 @@ func (s *Server) handleCreateArticul(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "number required", http.StatusBadRequest)
 		return
 	}
-	a, err := s.articulService.Create(r.Context(), userID, body.Number)
+	a, achResult, err := s.articulService.Create(r.Context(), userID, body.Number)
 	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") {
+			jsonError(w, err.Error(), http.StatusConflict)
+			return
+		}
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	jsonOK(w, a)
+	jsonOK(w, map[string]any{"articul": a, "achievements": achResult})
 }
 
 func (s *Server) handleGetArticul(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +61,38 @@ func (s *Server) handleAddChange(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.articulService.AddChange(r.Context(), articulID, userID, body.Description); err != nil {
 		jsonError(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	jsonOK(w, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleUpdateComment(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	articulID := r.PathValue("id")
+	var body struct {
+		Comment string `json:"comment"`
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+	if err := s.articulService.UpdateComment(r.Context(), articulID, userID, body.Comment); err != nil {
+		if strings.Contains(err.Error(), "forbidden") {
+			jsonError(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	jsonOK(w, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleDeleteArticul(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	articulID := r.PathValue("id")
+	if err := s.articulService.Delete(r.Context(), articulID, userID); err != nil {
+		if strings.Contains(err.Error(), "forbidden") {
+			jsonError(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	jsonOK(w, map[string]bool{"ok": true})

@@ -62,3 +62,23 @@ func (s *Server) handleGetMyStats(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonOK(w, stats)
 }
+
+func (s *Server) handleGetAchievements(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	list, err := s.achievementRepo.ListByUserID(r.Context(), userID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, list)
+}
+
+func (s *Server) handleDailyProgress(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	prog, err := s.achievementChecker.GetDailyProgress(r.Context(), userID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, prog)
+}

@@ -61,7 +61,32 @@ func (s *userService) ChangePassword(ctx context.Context, userID, oldPassword, n
 	return s.users.Update(ctx, user)
 }
 
+func GetLevel(allTimeCount int) string {
+	switch {
+	case allTimeCount >= 5000:
+		return "Легенда"
+	case allTimeCount >= 2000:
+		return "Император"
+	case allTimeCount >= 1000:
+		return "Мастер"
+	case allTimeCount >= 600:
+		return "Работяга"
+	case allTimeCount >= 300:
+		return "Новичок+"
+	default:
+		return "Новичок"
+	}
+}
+
+func GetLevelIcon(allTimeCount int) string {
+	return ""
+}
+
 func (s *userService) GetUserStats(ctx context.Context, userID string) (*ports.UserStats, error) {
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	total, err := s.articuls.CountByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -70,5 +95,11 @@ func (s *userService) GetUserStats(ctx context.Context, userID string) (*ports.U
 	if err != nil {
 		return nil, err
 	}
-	return &ports.UserStats{TotalArticuls: total, DailyCounts: daily}, nil
+	return &ports.UserStats{
+		TotalArticuls: total,
+		DailyCounts:   daily,
+		AllTimeCount:  user.AllTimeCount,
+		Level:         GetLevel(user.AllTimeCount),
+		LevelIcon:     GetLevelIcon(user.AllTimeCount),
+	}, nil
 }

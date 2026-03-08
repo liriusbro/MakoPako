@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
+
 	"articul-tracker/internal/domain"
 	"articul-tracker/internal/ports"
 )
@@ -15,15 +17,15 @@ func NewArticulRepo(db *SQLiteDB) ports.ArticulRepository {
 
 func (r *articulRepo) Create(ctx context.Context, a *domain.Articul) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO articuls (id, user_id, number, created_at) VALUES (?,?,?,?)`,
-		a.ID, a.UserID, a.Number, a.CreatedAt)
+		`INSERT INTO articuls (id, user_id, number, comment, created_at) VALUES (?,?,?,?,?)`,
+		a.ID, a.UserID, a.Number, a.Comment, a.CreatedAt)
 	return err
 }
 
 func (r *articulRepo) GetByID(ctx context.Context, id string) (*domain.Articul, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id,user_id,number,created_at FROM articuls WHERE id=?`, id)
+	row := r.db.QueryRowContext(ctx, `SELECT id,user_id,number,comment,created_at FROM articuls WHERE id=?`, id)
 	a := &domain.Articul{}
-	err := row.Scan(&a.ID, &a.UserID, &a.Number, &a.CreatedAt)
+	err := row.Scan(&a.ID, &a.UserID, &a.Number, &a.Comment, &a.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +34,7 @@ func (r *articulRepo) GetByID(ctx context.Context, id string) (*domain.Articul, 
 
 func (r *articulRepo) ListByUserID(ctx context.Context, userID string) ([]*domain.Articul, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id,user_id,number,created_at FROM articuls WHERE user_id=? ORDER BY created_at DESC`, userID)
+		`SELECT id,user_id,number,comment,created_at FROM articuls WHERE user_id=? ORDER BY created_at DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +42,7 @@ func (r *articulRepo) ListByUserID(ctx context.Context, userID string) ([]*domai
 	var articuls []*domain.Articul
 	for rows.Next() {
 		a := &domain.Articul{}
-		rows.Scan(&a.ID, &a.UserID, &a.Number, &a.CreatedAt)
+		rows.Scan(&a.ID, &a.UserID, &a.Number, &a.Comment, &a.CreatedAt)
 		articuls = append(articuls, a)
 	}
 	return articuls, nil
@@ -73,6 +75,61 @@ func (r *articulRepo) CountByUserID(ctx context.Context, userID string) (int, er
 	var count int
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM articuls WHERE user_id=?`, userID).Scan(&count)
 	return count, err
+}
+
+func (r *articulRepo) ListAllCurrentByUser(ctx context.Context, userID string) ([]*domain.Articul, error) {
+	return r.ListByUserID(ctx, userID)
+}
+
+func (r *articulRepo) CountByUserIDToday(ctx context.Context, userID string) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM articuls WHERE user_id=? AND date(created_at)=date('now')`, userID).Scan(&count)
+	return count, err
+}
+
+func (r *articulRepo) GetByUserIDAndNumber(ctx context.Context, userID, number string) (*domain.Articul, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, user_id, number, comment, created_at FROM articuls WHERE user_id=? AND lower(number)=lower(?)`, userID, number)
+	a := &domain.Articul{}
+	err := row.Scan(&a.ID, &a.UserID, &a.Number, &a.Comment, &a.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+func (r *articulRepo) DeleteAllByUserID(ctx context.Context, userID string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM articuls WHERE user_id=?`, userID)
+	return err
+}
+
+func (r *articulRepo) GetTopUserByPeriod(ctx context.Context, since string) (userID string, count int, err error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT user_id, COUNT(*) as cnt FROM articuls
+		WHERE created_at >= ?
+		GROUP BY user_id ORDER BY cnt DESC LIMIT 1`, since)
+	err = row.Scan(&userID, &count)
+	return
+}
+
+func (r *articulRepo) DeleteByID(ctx context.Context, articulID string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM articuls WHERE id=?`, articulID)
+	return err
+}
+
+func (r *articulRepo) UpdateComment(ctx context.Context, articulID, userID, comment string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE articuls SET comment=? WHERE id=? AND user_id=?`,
+		comment, articulID, userID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errors.New("forbidden or not found")
+	}
+	return nil
 }
 
 func (r *articulRepo) GetDailyCountsByUserID(ctx context.Context, userID string) ([]ports.DailyCount, error) {
